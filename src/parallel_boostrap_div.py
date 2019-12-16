@@ -1,4 +1,4 @@
-## This file tries to divide the problem
+# This file tries to divide the problem
 import numpy as np
 import multiprocessing as mp
 import timeit
@@ -15,8 +15,8 @@ def bootstrap(x, func):
 
 
 def bootstrap_par(x, func):
-    with mp.Pool(processes=2) as pool:
-        results = pool.map(func, x, chunksize=len(x) // 2 or 1)
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        results = pool.map(func, x)
     pool.close()
     return results
 
@@ -24,11 +24,11 @@ def bootstrap_par(x, func):
 if __name__ == "__main__":
     # sample_normal = np.random.normal(5, 1, 1000)
     # result = sampling(sample_normal, 1000, 100)
-    # print(bootstrap(result, np.mean))
+    # print(bootstrap(result, np.mean)[:5])
 
-    s = '''
+    s_100 = '''
 sample_normal = np.random.normal(5, 1, 10000)
-test = sampling(sample_normal, 1000, 100)
+test = sampling(sample_normal, 100, 100)
 test_result = bootstrap(test, np.mean)
 '''
 
@@ -37,9 +37,9 @@ import numpy as np
 from __main__ import bootstrap, sampling
 '''
 
-    s_par = '''
+    s_par_100 = '''
 sample_normal = np.random.normal(5, 1, 10000)
-test_p = sampling(sample_normal, 1000, 100)
+test_p = sampling(sample_normal, 100, 100)
 result_p = bootstrap_par(test_p, np.mean)
 '''
 
@@ -49,16 +49,38 @@ import numpy as np
 from __main__ import bootstrap_par, sampling
 '''
 
+    s_1000 = '''
+sample_normal = np.random.normal(5, 1, 1000)
+test = sampling(sample_normal, 1000, 100)
+test_result = bootstrap(test, np.mean)
+'''
+
+    s_par_1000 = '''
+sample_normal = np.random.normal(5, 1, 100000)
+test_p = sampling(sample_normal, 1000, 100)
+result_p = bootstrap_par(test_p, np.mean)
+'''
+
+    s_10000 = '''
+sample_normal = np.random.normal(5, 1, 1000)
+test = sampling(sample_normal, 100000, 100)
+test_result = bootstrap(test, np.mean)
+'''
+
+    s_par_10000 = '''
+sample_normal = np.random.normal(5, 1, 100000)
+test_p = sampling(sample_normal, 100000, 100)
+result_p = bootstrap_par(test_p, np.mean)
+'''
+
     benchmark = []
 
-    serial = [timeit.Timer(stmt=s, setup=setup).timeit(i) for i in range(1, 100, 10)]
-    par = [timeit.Timer(stmt=s_par, setup=setup_par).timeit(i) for i in range(1, 100, 10)]
-    repeats = range(1, 1000, 100)
+    serial = [timeit.Timer(stmt=i, setup=setup).timeit(10) for i in [s_100, s_1000, s_10000]]
+    par = [timeit.Timer(stmt=i, setup=setup_par).timeit(10) for i in [s_par_100, s_par_1000, s_par_10000]]
+    repeats = [100, 1000, 100000]
 
-    data = {"Repeats": repeats, "Serial": serial, "Parallel": par}
+    df = pd.DataFrame(np.c_[serial, par], index=repeats, columns=["Repeats", "Serial", "Parallel"])
 
-    df = pd.DataFrame(data)
-
-    plt.plot(df['Repeats'], df['Serial'])
-    plt.plot(df['Repeats'], df['Parallel'])
+    plt.plot(df['Repeats'], df['Serial'], color="red")
+    plt.plot(df['Repeats'], df['Parallel'], color="blue")
     plt.show()
