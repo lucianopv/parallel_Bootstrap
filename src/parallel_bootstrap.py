@@ -306,3 +306,10 @@ from __main__ import bootstrap_np_par
     sns.lineplot(data=df, dashes=[(None, None), (2, 2), (None, None), (2, 2)])
     plt.legend(labels=['Serial', 'Parallel', 'Serial with Numpy', 'Parallel with Numpy'])
     plt.show()
+
+    instructions_s_np_par2 = [s_np_par.format(i) for i in range(1000, 3000000, 10000)]
+    np_par2 = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(10) for ins in instructions_s_np_par2]
+    repeats2 = range(1000, 3000000, 10000)
+
+    df2 = pd.DataFrame(np.c_[np_par2], index=repeats2,
+                       columns=['ParallelNP'])
