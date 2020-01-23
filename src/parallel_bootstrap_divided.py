@@ -54,7 +54,7 @@ def statistic(x, func):
 #takes list of "samples" samples of sample size "sample_size" and applies the function "func" to each sample
 def statistic_par(x, func):
     with mp.Pool(processes=mp.cpu_count()) as pool:
-        results = pool.map_async(func, x)
+        results = pool.map_async(func, x).get()
     pool.close()
     return results
 
@@ -79,14 +79,14 @@ if __name__ == "__main__":
 import numpy as np
 import multiprocessing as mp
 from __main__ import sampling, sampling_par, sampling_par_shared
-sample_normal = np.random.normal(5, 1, 100)
+sample_normal = np.random.normal(5, 1, 1000)
 '''
     setup_statistic = '''
 import multiprocessing as mp
 import numpy as np
 from __main__ import sampling, statistic, statistic_par, statistic_par_shared
-sample_normal = np.random.normal(5, 1, 100)
-all_samples = [sampling(sample_normal, i, 100) for i in range(1000, 100000, 10000)]
+sample_normal = np.random.normal(5, 1, 1000)
+all_samples = [sampling(sample_normal, i, 100) for i in range(1000, 1000000, 10000)]
 '''
 
     s = '''
@@ -107,12 +107,12 @@ statistic_par(all_samples[{}], np.mean)
     st_ps = '''
 statistic_par_shared(all_samples[{}], np.mean)
 '''
-    ins_sample = [s.format(i) for i in range(1000, 100000, 10000)]
-    ins_sample_p = [s_p.format(i) for i in range(1000, 100000, 10000)]
-    ins_sample_ps = [s_ps.format(i) for i in range(1000, 100000, 10000)]
-    ins_stat = [st.format(i) for i in range(10)]
-    ins_stat_p = [st_p.format(i) for i in range(10)]
-    ins_stat_ps = [st_ps.format(i) for i in range(10)]
+    ins_sample = [s.format(i) for i in range(1000, 1000000, 10000)]
+    ins_sample_p = [s_p.format(i) for i in range(1000, 1000000, 10000)]
+    ins_sample_ps = [s_ps.format(i) for i in range(1000, 1000000, 10000)]
+    ins_stat = [st.format(i) for i in range(100)]
+    ins_stat_p = [st_p.format(i) for i in range(100)]
+    ins_stat_ps = [st_ps.format(i) for i in range(100)]
 
     #print("next")
     sample = [timeit.Timer(stmt=ins, setup=setup_sample).timeit(1) for ins in ins_sample]
@@ -127,13 +127,13 @@ statistic_par_shared(all_samples[{}], np.mean)
     #print("next")
     stat_ps = [timeit.Timer(stmt=ins, setup=setup_statistic).timeit(1) for ins in ins_stat_ps]
 
-    repeats = range(1000, 100000, 10000)
+    repeats = range(1000, 1000000, 10000)
 
     df = pd.DataFrame(np.c_[sample, sample_p, sample_ps, stat, stat_p, stat_ps], 
                       index=repeats, columns=['Sampling', 'SamplingP', 'SamplingPS', 
                                               'Statistic', 'StatisticP', 'StatisticPS'])
 
-    #df.to_pickle('./data/DivPar2.pkl')
+    df.to_pickle('../data/DivParv2.pkl')
 
     sns.set(style='darkgrid', palette='Paired')
     sns.lineplot(data=df)

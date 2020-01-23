@@ -10,10 +10,6 @@ import pandas as pd
 import seaborn as sns
 from typing import Callable, List
 
-# def collect_result(result):
-#     global results
-#     results.append(result)
-
 # Boostrapping without Numpy
 from traitlets import List
 
@@ -121,7 +117,7 @@ def bootstrap_par_comp(x: np.ndarray, func: Callable, sample_size: int) -> float
 
 
 # Boostrapping in parallel without Numpy
-def bootstrap_par(x: np.ndarray, func: Callable, samples: int = 100, sample_size: int = 0) -> list:
+def bootstrap_par(x: np.ndarray, func: Callable, samples: int = 100, sample_size: int = 0, workers=0) -> list:
     """
     This function generates a determined number of samples from an initial array and apply to each the
     function of the statistic. It uses the multiprocessing module to create a pool of workers to divide the
@@ -153,11 +149,14 @@ def bootstrap_par(x: np.ndarray, func: Callable, samples: int = 100, sample_size
     if sample_size == 0:
         sample_size = len(x)
 
+    if workers == 0:
+        workers = mp.cpu_count()
+
     x_ = mp.Array(ctypes.c_double, len(x))
     x_shr = np.ctypeslib.as_array(x_.get_obj())
     x_shr[:] = x
 
-    with mp.Pool(mp.cpu_count()) as pool:
+    with mp.Pool(workers) as pool:
         results = pool.starmap_async(bootstrap_par_comp,
                                      [(x_shr, func, sample_size) for _ in range(samples)]).get()
 
@@ -196,7 +195,7 @@ def bootstrap_complete(x: np.ndarray, func: Callable, sample_size: int) -> float
 
 
 # Bootstrapping in parallel with Numpy
-def bootstrap_np_par(x: np.ndarray, func: Callable, samples: int = 1000, sample_size: int = 100):
+def bootstrap_np_par(x: np.ndarray, func: Callable, samples: int = 1000, sample_size: int = 100, workers=0):
     """
      This function generates a determined number of samples from an initial array and apply to each the
      function of the statistic. It uses the multiprocessing module to create a pool of workers to divide the
@@ -225,91 +224,18 @@ def bootstrap_np_par(x: np.ndarray, func: Callable, samples: int = 1000, sample_
      >>> sample_normal = np.random.normal(5, 1, 1000)
      >>> bootstrap_par(sample_normal, np.mean, samples = 1000, sample_size = 100)
      """
+    if workers == 0:
+        workers = mp.cpu_count()
+
     x_ = mp.Array(ctypes.c_double, len(x))
     x_shr = np.ctypeslib.as_array(x_.get_obj())
     x_shr[:] = x
 
-    with mp.Pool(mp.cpu_count()) as pool:
-        results: ApplyResult[List[float]] = pool.starmap_async(bootstrap_complete,
-                                                               [(x_shr, func, sample_size) for _ in range(samples)])
+    with mp.Pool(workers) as pool:
+        results: List[float] = pool.starmap_async(bootstrap_complete,
+                                                  [(x_shr, func, sample_size) for _ in range(samples)]).get()
 
     pool.close()
     return results
 
 
-if __name__ == '__main__':
-    # sample_normal = np.random.normal(5, 1, 1000)
-    #
-    # print("Without parallel: \n")
-    # print(bootstrap(sample_normal, np.mean, 1000, 100)[:5])
-    #
-    # print("\n With parallel: \n")
-    # print(bootstrap_par(sample_normal, np.mean, samples=1000, sample_size=100))
-
-    s = '''
-sample_normal = np.random.normal(5, 1, 10000)
-test = bootstrap(sample_normal, np.mean, {}, 100)
-'''
-
-    setup = '''
-import numpy as np
-from __main__ import bootstrap
-'''
-
-    s_np = '''
-sample_normal = np.random.normal(5, 1, 10000)
-test = bootstrap_np(sample_normal, np.mean, {}, 100)
-'''
-
-    setup_np = '''
-import numpy as np
-from __main__ import bootstrap_np
-'''
-
-    s_par = '''
-sample_normal = np.random.normal(5, 1, 10000)
-test_p = bootstrap_par(sample_normal, np.mean, {}, 100)
-'''
-
-    setup_par = '''
-import multiprocessing as mp
-import numpy as np
-from __main__ import bootstrap_par
-'''
-
-    s_np_par = '''
-sample_normal = np.random.normal(5, 1, 10000)
-test_p = bootstrap_np_par(sample_normal, np.mean, {}, 100)
-'''
-
-    setup_np_par = '''
-import multiprocessing as mp
-import numpy as np
-from __main__ import bootstrap_np_par
-'''
-
-    instructions_s = [s.format(i) for i in range(1000, 1000000, 10000)]
-    instructions_s_par = [s_par.format(i) for i in range(1000, 1000000, 10000)]
-    instructions_s_np = [s_np.format(i) for i in range(1000, 1000000, 10000)]
-    instructions_s_np_par = [s_np_par.format(i) for i in range(1000, 1000000, 10000)]
-
-    serial = [timeit.Timer(stmt=ins, setup=setup).timeit(1) for ins in instructions_s]
-    par = [timeit.Timer(stmt=ins, setup=setup_par).timeit(1) for ins in instructions_s_par]
-    np_serial = [timeit.Timer(stmt=ins, setup=setup_np).timeit(1) for ins in instructions_s_np]
-    np_par = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(10) for ins in instructions_s_np_par]
-    repeats = range(1000, 1000000, 10000)
-
-    df = pd.DataFrame(np.c_[serial, par, np_serial, np_par], index=repeats,
-                      columns=['Serial', 'Parallel', 'SerialNP', 'ParallelNP'])
-
-    sns.set(style='darkgrid', palette='Paired')
-    sns.lineplot(data=df, dashes=[(None, None), (2, 2), (None, None), (2, 2)])
-    plt.legend(labels=['Serial', 'Parallel', 'Serial with Numpy', 'Parallel with Numpy'])
-    plt.show()
-
-    instructions_s_np_par2 = [s_np_par.format(i) for i in range(1000, 3000000, 10000)]
-    np_par2 = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(10) for ins in instructions_s_np_par2]
-    repeats2 = range(1000, 3000000, 10000)
-
-    df2 = pd.DataFrame(np.c_[np_par2], index=repeats2,
-                       columns=['ParallelNP'])
