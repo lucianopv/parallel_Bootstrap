@@ -72,6 +72,6 @@ np_par2 = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(1) for ins in instr
 repeats2 = range(1000, 3000000, 10000)
 
 df2 = pd.DataFrame(np.c_[np_par2], index=repeats2,
-                   columns=['ParallelNP'])
+                  columns=['ParallelNP'])
 
 df2.to_pickle('../data/ParallelNPv2.pkl')
