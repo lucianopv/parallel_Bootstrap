@@ -10,6 +10,7 @@
 rerun=always
 ]{pythontex}
 \usepackage{python}
+\usepackage{csquotes}
 \usepackage{cleveref}
 \usepackage{enumerate}
 \usepackage[utf8]{inputenc}
@@ -28,6 +29,7 @@ rerun=always
 \SetKwArray{Samples}{array\_of\_samples}
 \SetKwArray{Sample}{sample$_{b}$}
 \SetKwArray{Results}{result\_array}
+\SetKwProg{MP}{Parallel:}{:}{end}
 \SetKw{KwTo}{in}\SetKwFor{For}{for}{\string:}{} \SetKwIF{If}{ElseIf}{Else}{if}{:}{elif}{else:}{} \SetKwFor{While}{while}{:}{fintq}
 \newcommand{\forcond}{$b=0$ \KwTo $B$}
 \renewcommand{\forcond}{$b$ \KwTo\Range{$B$}} \AlgoDontDisplayBlockMarkers\SetAlgoNoEnd\SetAlgoNoLine%
@@ -101,7 +103,7 @@ loop that generates a random number, under some specific conditions, to select a
         select $X_{1, b}^{*}, \dots, X_{n,b}^{*}$ elements of the original data using replacement\; }
     \tcc{Estimation phase}
     \For{\forcond}{
-        estimate $T_{n,b}^{*}$ for the $b$ sample\;}
+        estimate $T_{n,b}^{*}$ for the $b$-th sample\;}
     \tcc{Results phase}
     estimate the square root of the variance of the statistics and the confidence interval
 \caption{Bootstrapping}\label{alg:AB}
@@ -265,7 +267,7 @@ has a minimum of $B = 1,000$ samples up to $B = 1,000,000$ samples by steps of $
 algorithm, we time the performance using the \texttt{timeit} module of Python libraries, which returns an average time for
 each run. The results are presented in the Figure \ref{fig:SerialTest}, where the straight blue line is the function
 without \texttt{numpy}, and the dashed line is the function in Algorithm \ref{alg:AB3}. In average, the function with Numpy
-is 8.64 times faster than the function without this package, confirming our hypothesis of the difference of the time complexity
+is 8.64 times faster than the function without this package, confirming our hypothesis on the difference of the time complexity
 between both algorithms.
 
 \medskip
@@ -297,10 +299,232 @@ savefig('serial_test.pdf')
     \begin{center}
         \includegraphics{serial_test.pdf}
     \end{center}
-    \caption{Bootstrapping Test for Serial Functions}\label{fig:SerialTest}
+    \caption{Bootstrapping Test for Serial Functions: Performance depending on number of samples}\label{fig:SerialTest}
 \end{figure}
 
 \subsection{Parallel Algorithms}\label{subsec:parallel-algorithms}
+
+According to \cite{STCR} "parallel processing 'languages' provide ways of managing the work performed by different
+processors in a multi-processor environment." Furthermore, they say that by using parallel computing one should be able
+to divide the problem into smaller ones and then use the different available processors to solve the entire problem. We
+can interpret from these authors that in order to use parallel computing, the problem has to be divided into smaller parts.
+As seen in Algorithm \ref{alg:AB}, there are 2 main loops that could work as one loop and independently between each of
+it's steps. Consequently, we could be able to divide the process into smaller problems and then join them to get the
+results (See Algorithm \ref{alg:ABPar} line \ref{subproblem-loop}).
+
+\medskip
+
+\begin{algorithm}[H]
+    \KwData{A sample of a random variable $X$}
+    \KwResult{A standard error and confidence interval}
+    \tcc{Sampling phase and Estimation phase}
+    \For{\forcond}{\label{subproblem-loop}
+        \tcp{Subproblem $b$}
+        select $X_{1, b}^{*}, \dots, X_{n,b}^{*}$ elements of the original data using replacement\;
+        estimate $T_{n,b}^{*}$ for the $b$-th sample\;}
+    \tcc{Results phase}
+    estimate the square root of the variance of the statistics and the confidence interval
+\caption{Parallel Bootstrapping}\label{alg:ABPar}
+\end{algorithm}
+
+\medskip
+
+To implement the parallel computing version of the Serial Bootstrapping algorithms, we are going to use the \texttt{multiprocessing}
+library, which allows the possibility of creating a \texttt{Pool} of "workers" to divide the problem and then join the
+results to generate the final solution. In terms of the algorithm, the \texttt{for loop}, in line \ref{subproblem-loop} of
+Algorithm \ref{alg:ABPar}, is going to be replaced by a \texttt{Pool} object that will implement the function a determined
+number of times ($B$) to obtain the underlying empirical distribution of the statistic. Since we have two options for the
+sampling phase, i.e. with \texttt{numpy} and without it, we are going to test the performance of the functions implementing
+both cases under parallel computing and compare the results, and then we will analyze the results between serial and parallel
+computing.
+
+\medskip
+
+\begin{algorithm}[H]
+   \KwData{A sample of a random variable $X$}
+    \KwResult{A standard error and confidence interval}
+    \tcc{Sampling phase and Estimation phase}
+    \MP{with \texttt{mp.Pool(workers) as pool}}{\label{subproblem-loop-python}
+        \tcp{Since there are $B$ sub-problems, the \texttt{multiprocessing Pool} object will divide the implementation
+             into the number of \texttt{workers} in equal chunk sizes}
+        select $X_{1, b}^{*}, \dots, X_{n,b}^{*}$ elements of the original data using replacement\;
+        estimate $T_{n,b}^{*}$ for the $b$-th sample\;}
+    \tcc{Results phase}
+    estimate the square root of the variance of the statistics and the confidence interval
+\caption{Parallel Bootstrapping Example with \texttt{multiprocessing module}}\label{alg:ABPar2}
+\end{algorithm}
+
+\medskip
+
+It is important to mention at this point that the implementation of the function under the \texttt{multiprocessing} module
+of Python is based on the repetition of a function among an iterable object. Since we are repeating the same process independently
+i.e. sampling and estimating, over the same iterable objects, i.e. the arguments\footnotemark, a memory problem may appear. If the original
+data is too large and we want to generate a significant amount of bootstrapping samples from it, then a list of arguments
+would be a vector with a repeated copy of the data vector $B$ times. To avoid this problem we created a shared object using
+the \texttt{Array} object of the \texttt{multiprocessing} module where we stored the original data array. Therefore, no
+copy of the original data should get generated at each repetition.
+
+\footnotetext{Please refer to the code to understand the meaning of the use of arguments as iterable.}
+
+\medskip
+
+\begin{pycode}
+from pylab import *
+rc('font', family='serif')
+rc('font', size=8.0)
+rc('legend', fontsize=8.0)
+rc('font', weight='normal')
+import numpy as np
+import pandas as pd
+import matplotlib.ticker as ticker
+from scipy.stats import norm
+import seaborn as sns
+data = pd.read_pickle('data/NoNPvsNPv2.pkl')
+data_wo = data.loc[:, ['Parallel', 'ParallelNP']]
+data_wo = data_wo.rename(columns={"Parallel": "Without Numpy", "ParallelNP": "With Numpy"})
+clf()
+figure(figsize=(5, 4.5))
+sns.set(style='darkgrid', palette='Paired')
+p = sns.lineplot(data=data_wo, dashes=[(None, None), (2, 2)])
+p.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x)))
+p.set(xlabel = 'Size (number of samples)', ylabel = 'Running Time', title = 'Serial Implementation')
+savefig('parallel_test.pdf')
+\end{pycode}
+
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics{parallel_test.pdf}
+    \end{center}
+    \caption{Bootstrapping Test for Parallel Functions: Performance depending on number of samples}\label{fig:ParallelTest}
+\end{figure}
+
+Figure \ref{fig:ParallelTest} shows the results from the implementation of the parallel version of both functions. As seen before
+in the serial case, the function that uses the \texttt{numpy} package is bounded, in terms of time complexity, by the one
+without it. The performance of the function with \texttt{numpy} is in average 7.26 faster than the one without it, which
+is a similar result we obtained when using the serial functions. For this test, we used the total number of cores of the
+computer where it was tested (i.e. 6 cores), but another important question at this point is how the performance changes
+when the number of computer cores change as well. To answer the latter, we did a test of performance by using an increasing
+number of cores up until the total number available in the computer (i.e. 6 cores) and leaving at $10,000$ the number of samples.
+The results are presented in the Figure \ref{fig:CoresTest} and illustrate that the number of cores have a more significant
+impact in the parallel version of the algorithm that does not use \texttt{numpy}, specially when it uses more than 1 core.
+Contrarily, the use of \texttt{numpy} has a relevant impact for more than 2 cores, although it is not as significant
+as the the case without the scientific package.
+
+\begin{pycode}
+from pylab import *
+rc('font', family='serif')
+rc('font', size=8.0)
+rc('legend', fontsize=8.0)
+rc('font', weight='normal')
+import numpy as np
+import pandas as pd
+import matplotlib.ticker as ticker
+from scipy.stats import norm
+import seaborn as sns
+data = pd.read_pickle('data/Cores.pkl')
+data_wo = data.loc[:, ['Parallel', 'ParallelNP']]
+data_wo = data_wo.rename(columns={"Parallel": "Without Numpy", "ParallelNP": "With Numpy"})
+data_wo['Cores'] = data_wo.index
+data_wo2 = pd.melt(data_wo, ['Cores'], var_name='Function')
+clf()
+figure(figsize=(5, 4.5))
+sns.set(style='darkgrid', palette='Paired')
+p = sns.catplot(data=data_wo2, x='Cores', y='value', hue='Function', kind='point', linestyles=["-", "--", "-", "--"],
+                legend_out=False)
+p.set(xlabel='Cores Used for Parallel', ylabel='Time')
+savefig('cores_test.pdf')
+\end{pycode}
+
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics{cores_test.pdf}
+    \end{center}
+    \caption{Bootstrapping Test for Parallel Functions: Performance depending on number of Cores and executing $10,000$ samples}\label{fig:CoresTest}
+\end{figure}
+
+\subsection{Comparing Serial to Parallel Functions}
+
+After observing the results of using the \texttt{numpy} package on both serial and parallel functions, we are going to
+analyze the performance between the serial and the parallel version of each function. In this case, we should expect an
+improvement in both cases, from serial to parallel, and faster performance for the \texttt{numpy} version of each function.
+
+\begin{pycode}
+from pylab import *
+rc('font', family='serif')
+rc('font', size=8.0)
+rc('legend', fontsize=8.0)
+rc('font', weight='normal')
+import numpy as np
+import pandas as pd
+import matplotlib.ticker as ticker
+from scipy.stats import norm
+import seaborn as sns
+data = pd.read_pickle('data/NoNPvsNPv2.pkl')
+clf()
+figure(figsize=(5, 4.5))
+sns.set(style='darkgrid', palette='Paired')
+p = sns.lineplot(data=data, dashes=[(None, None), (2, 2), (None, None), (2, 2)])
+p.set(xlabel = 'Size (number of samples)', ylabel = 'Running Time', title = 'Function without/with Numpy')
+p.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x)))
+p.legend(labels=['Serial', 'Parallel', 'Serial with Numpy', 'Parallel with Numpy'])
+savefig('serialvsparallel_test.pdf')
+\end{pycode}
+
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics{serialvsparallel_test.pdf}
+    \end{center}
+    \caption{Bootstrapping Test for Serial and Parallel Functions: Performance depending on number of samples}\label{fig:SerialVSParallelTest}
+\end{figure}
+
+Figure \ref{fig:SerialVSParallelTest} includes all the previous results, and, as expected, the parallel versions have a
+faster performance than the serial ones. Nonetheless, it is noteworthy the fact that the serial version with \texttt{numpy}
+has a better performance (2.29 times) than the parallel version without it. This suggests that the \texttt{numpy} package
+improves the performance of the algorithm even when it is parallelised. Additionally, when comparing the serial version without
+\texttt{numpy} and the parallel with it, the performance of the algorithm is, in average, 28.4 faster. Although the results
+seem consistent along the number of samples, we analyze the performance for smaller number of samples. Figure \ref{fig:SerialVSParallelSmallTest}
+shows that the serial versions of the function seems to have better performance when the size of samples is lower than
+$10,000$. This results could be related with the series of steps that the \texttt{multiprocessing} module has to execute
+to create the \texttt{Pool} object and the tasks related to it. This overhead can be seen as a cost for the algorithm when
+a low level of samples are generated.
+
+\begin{pycode}
+from pylab import *
+rc('font', family='serif')
+rc('font', size=8.0)
+rc('legend', fontsize=8.0)
+rc('font', weight='normal')
+import numpy as np
+import pandas as pd
+import matplotlib.ticker as ticker
+from scipy.stats import norm
+import seaborn as sns
+data = pd.read_pickle('data/NoNPvsNP_small.pkl')
+clf()
+figure(figsize=(5, 4.5))
+sns.set(style='darkgrid', palette='Paired')
+p = sns.lineplot(data=data, dashes=[(None, None), (2, 2), (None, None), (2, 2)])
+p.set(xlabel = 'Size (number of samples)', ylabel = 'Running Time', title = 'Function without/with Numpy')
+p.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x)))
+p.legend(labels=['Serial', 'Parallel', 'Serial with Numpy', 'Parallel with Numpy'])
+savefig('serialvsparallel_small_test.pdf')
+\end{pycode}
+
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics{serialvsparallel_small_test.pdf}
+    \end{center}
+    \caption{Bootstrapping Test for Serial and Parallel Functions: Performance depending on number of samples between $10$ and $5,000$}\label{fig:SerialVSParallelSmallTest}
+\end{figure}
+
+\subsection{Task Divition: Separating Sampling and Estimation}\label{subsec:task-divition:-separating-sampling-and-estimation}
+
+The previous section illustrates that the parallel versions of the bootstrapping algorithm proposed in the the present study
+has have better performance, specially when special scientific packages are used to optimize it. However, when the number
+of samples was lower than $10,000$ the serial version had a better performance, demonstrating that parallel computing has
+limitations. These limitations seems to be related with a time overhead needed to develop the framework
+for the parallel implementation. To further analyze this limitations we divided the
+sampling phase from the estimation phase and construct a function for each of these phases, in a serial and a parallel version.
 
 
 

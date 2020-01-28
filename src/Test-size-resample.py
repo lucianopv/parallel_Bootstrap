@@ -46,32 +46,32 @@ import numpy as np
 from src import parallel_bootstrap
 '''
 
-instructions_s = [s.format(i) for i in range(1000, 1000000, 10000)]
-instructions_s_par = [s_par.format(i) for i in range(1000, 1000000, 10000)]
-instructions_s_np = [s_np.format(i) for i in range(1000, 1000000, 10000)]
-instructions_s_np_par = [s_np_par.format(i) for i in range(1000, 1000000, 10000)]
+instructions_s = [s.format(i) for i in range(10, 5000, 100)]
+instructions_s_par = [s_par.format(i) for i in range(10, 5000, 100)]
+instructions_s_np = [s_np.format(i) for i in range(10, 5000, 100)]
+instructions_s_np_par = [s_np_par.format(i) for i in range(10, 5000, 100)]
 
 serial = [timeit.Timer(stmt=ins, setup=setup).timeit(1) for ins in instructions_s]
 par = [timeit.Timer(stmt=ins, setup=setup_par).timeit(1) for ins in instructions_s_par]
 np_serial = [timeit.Timer(stmt=ins, setup=setup_np).timeit(1) for ins in instructions_s_np]
 np_par = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(1) for ins in instructions_s_np_par]
-repeats = range(1000, 1000000, 10000)
+repeats = range(10, 5000, 100)
 
 df = pd.DataFrame(np.c_[serial, par, np_serial, np_par], index=repeats,
                   columns=['Serial', 'Parallel', 'SerialNP', 'ParallelNP'])
 
-df.to_pickle('../data/NoNPvsNPv2.pkl')
+df.to_pickle('../data/NoNPvsNP_small.pkl')
 
 sns.set(style='darkgrid', palette='Paired')
 sns.lineplot(data=df, dashes=[(None, None), (2, 2), (None, None), (2, 2)])
 plt.legend(labels=['Serial', 'Parallel', 'Serial with Numpy', 'Parallel with Numpy'])
 plt.show()
 
-instructions_s_np_par2 = [s_np_par.format(i) for i in range(1000, 3000000, 10000)]
-np_par2 = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(1) for ins in instructions_s_np_par2]
-repeats2 = range(1000, 3000000, 10000)
-
-df2 = pd.DataFrame(np.c_[np_par2], index=repeats2,
-                  columns=['ParallelNP'])
-
-df2.to_pickle('../data/ParallelNPv2.pkl')
+# instructions_s_np_par2 = [s_np_par.format(i) for i in range(1000, 3000000, 10000)]
+# np_par2 = [timeit.Timer(stmt=ins, setup=setup_np_par).timeit(1) for ins in instructions_s_np_par2]
+# repeats2 = range(1000, 3000000, 10000)
+#
+# df2 = pd.DataFrame(np.c_[np_par2], index=repeats2,
+#                   columns=['ParallelNP'])
+#
+# df2.to_pickle('../data/ParallelNPv2.pkl')
