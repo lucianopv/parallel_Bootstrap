@@ -46,7 +46,6 @@ df2 = pd.melt(df, ['Cores'], var_name='Function')
 sns.set(style='darkgrid', palette='Paired')
 p = sns.catplot(data=df2, x='Cores', y='value', hue='variable', kind='point', linestyles=["-", "--", "-", "--"],
                 legend_out=False)
-# p.legend(loc='upper right', ncol=2, labels=['Serial', 'Parallel', 'Serial Numpy', 'Parallel Numpy'])
 p.set(xlabel='Cores Used for Parallel', ylabel='Time')
 p.fig.text(2.2, 0.9, '*Serial presented for comparison.')
 plt.show()

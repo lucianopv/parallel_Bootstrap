@@ -1,0 +1,28 @@
+\boolfalse {citerequest}\boolfalse {citetracker}\boolfalse {pagetracker}\boolfalse {backtracker}\relax 
+\babel@toc {english}{}
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {1}Introduction}{1}%
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {2}Bootstrapping Functions}{3}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {2.1}Basic Algorithm}{3}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {2.2}Serial Algorithms}{7}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {2.3}Parallel Algorithms}{9}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {2.4}Comparing Serial to Parallel Functions}{14}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {2.5}Task Division: Separating Sampling and Estimation}{16}%
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {3}Conclusions: Benefits and Costs of using parallel computing for Bootstrapping}{19}%
+\defcounter {refsection}{0}\relax 
+\contentsline {section}{\numberline {4}Appendix: Code}{21}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.1}Serial and Parallel functions}{21}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.2}Tests of Serial and Parallel functions}{24}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.3}Divided version of Serial and Parallel functions}{26}%
+\defcounter {refsection}{0}\relax 
+\contentsline {subsection}{\numberline {4.4}Test for the divided version of Serial and Parallel functions}{29}%
